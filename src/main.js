@@ -165,7 +165,6 @@ async function aggregatePhase(db, visitIds, log) {
     const batch = visitIds.slice(i, i + BATCH);
     const answers = await listAll(db, ANSWERS_COL, [
       Query.equal("visit", batch),
-      Query.select(["$id", "question", "visit", "answer_number", "answer_decimal", "answer_text", "answer_date"]),
     ], log);
 
     for (const answer of answers) {
