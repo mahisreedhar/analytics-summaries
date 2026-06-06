@@ -348,6 +348,9 @@ export default async ({ req, res, log, error }) => {
   const db = new Databases(client);
 
   try {
+    log(`ENDPOINT: ${process.env.APPWRITE_FUNCTION_API_ENDPOINT}`);
+    log(`PROJECT_ID: ${process.env.APPWRITE_FUNCTION_PROJECT_ID}`);
+    log(`API_KEY set: ${!!process.env.APPWRITE_FUNCTION_API_KEY}`);
     log("Loading question key map…");
     const questionKeyMap = await loadQuestionKeyMap(db, log);
     log(`Loaded ${questionKeyMap.size} question(s)`);
