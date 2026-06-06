@@ -137,13 +137,16 @@ async function listAll(db, collectionId, queries) {
 
 /** Build a Map<questionId, questionKey> from the questions collection. */
 async function loadQuestionKeyMap(db, log) {
-  log("list all from questions collection…");
+  log(`  QUESTIONS_COL resolved to: "${QUESTIONS_COL}"`);
+  log(`  DB_ID resolved to: "${DB_ID}"`);
+  log("  Fetching questions from Appwrite…");
   const questions = await listAll(db, QUESTIONS_COL, []);
+  log(`  Fetched ${questions.length} question document(s)`);
   const map = new Map();
   questions.forEach((q) => {
     if (q.$id && q.question_key) map.set(q.$id, q.question_key);
   });
-  log("question key map returning…");
+  log(`  Mapped ${map.size} question key(s)`);
   return map;
 }
 
