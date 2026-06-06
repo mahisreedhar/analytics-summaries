@@ -26,13 +26,14 @@ import { Client, Databases, Query } from "node-appwrite";
 
 // ── Env config ────────────────────────────────────────────────────────────────
 
-const DB_ID = "696a60cf00151d14bf35";
-const VISITS_COL = "visits";
-const ANSWERS_COL = "visit_answers";
-const ANALYTICS_COL = "analytics";
-const SUMMARIES_COL = "analytics_summaries";
-const PROJECTS_COL = "projects";
-const QUESTIONS_COL = "questions";
+const DB_ID = process.env.APPWRITE_DATABASE_ID;
+const VISITS_COL = process.env.VISITS_COL_ID || "visits";
+const ANSWERS_COL = process.env.VISIT_ANSWERS_COL_ID || "visit_answers";
+const ANALYTICS_COL = process.env.ANALYTICS_COL_ID || "analytics";
+const SUMMARIES_COL =
+  process.env.ANALYTICS_SUMMARIES_COL_ID || "analytics_summaries";
+const PROJECTS_COL = process.env.PROJECTS_COL_ID || "projects";
+const QUESTIONS_COL = process.env.QUESTIONS_COL_ID || "questions";
 
 const PHASES = ["baseline", "endline"];
 const PAGE = 1000; // server-side SDK supports up to 5000, 1000 is safe
