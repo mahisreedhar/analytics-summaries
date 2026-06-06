@@ -14,7 +14,6 @@
  *   ANALYTICS_COL_ID        (default: "analytics")
  *   ANALYTICS_SUMMARIES_COL_ID  (default: "analytics_summaries")
  *   PROJECTS_COL_ID         (default: "projects")
- *   QUESTIONS_COL_ID        (default: "questions")
  *
  * Appwrite automatically injects:
  *   APPWRITE_FUNCTION_API_ENDPOINT
@@ -33,7 +32,6 @@ const ANALYTICS_COL = process.env.ANALYTICS_COL_ID || "analytics";
 const SUMMARIES_COL =
   process.env.ANALYTICS_SUMMARIES_COL_ID || "analytics_summaries";
 const PROJECTS_COL = process.env.PROJECTS_COL_ID || "projects";
-const QUESTIONS_COL = process.env.QUESTIONS_COL_ID || "questions";
 
 const PHASES = ["baseline", "endline"];
 const PAGE = 100;
@@ -135,35 +133,14 @@ async function listAll(db, collectionId, queries, log) {
   return docs;
 }
 
-/** Build a Map<questionId, questionKey> from the questions collection. */
-async function loadQuestionKeyMap(db, log) {
-  log("  Skipping questions fetch — question_key resolved from embedded relationship on answers");
-  return new Map();
-}
-
 // ── Core aggregation ──────────────────────────────────────────────────────────
 
-/**
- * Resolve the question_key for an answer document.
- * Handles both embedded relationship objects and plain string IDs.
- */
-function resolveQuestionKey(answer, questionKeyMap) {
-  if (answer.question && typeof answer.question === "object") {
-    if (answer.question.question_key) return answer.question.question_key;
-    if (answer.question.$id)
-      return questionKeyMap.get(answer.question.$id) || null;
-  }
-  if (typeof answer.question === "string") {
-    return questionKeyMap.get(answer.question) || null;
-  }
-  return null;
+function resolveQuestionKey(answer) {
+  return answer.question?.question_key ?? null;
 }
 
 function resolveVisitId(answer) {
-  if (answer.visit && typeof answer.visit === "object")
-    return answer.visit.$id || null;
-  if (typeof answer.visit === "string") return answer.visit;
-  return null;
+  return answer.visit?.$id ?? null;
 }
 
 /**
@@ -175,7 +152,7 @@ function resolveVisitId(answer) {
  *     _computed_annual_workdays: { _total_visits: N, answers: { [band]: count } }
  *   }
  */
-async function aggregatePhase(db, visitIds, questionKeyMap, log) {
+async function aggregatePhase(db, visitIds, log) {
   // questionKey → { visits: Set<visitId>, answers: { normalized: count } }
   const qMap = {};
 
@@ -192,7 +169,7 @@ async function aggregatePhase(db, visitIds, questionKeyMap, log) {
     ], log);
 
     for (const answer of answers) {
-      const qKey = resolveQuestionKey(answer, questionKeyMap);
+      const qKey = resolveQuestionKey(answer);
       if (!qKey) continue;
 
       const rawValue = getAnswerValue(answer);
@@ -262,25 +239,12 @@ async function aggregateNutrition(db, projectId, phase, log) {
   const rows = await listAll(db, ANALYTICS_COL, [
     Query.equal("project", projectId),
     Query.equal("phase", phase),
+    Query.select(["$id", "nutrition_labels"]),
   ], log);
 
   const labels = {};
   for (const row of rows) {
-    let arr = row.nutrition_labels;
-    if (!arr) continue;
-    if (typeof arr === "string") {
-      if (arr.startsWith("[")) {
-        try {
-          arr = JSON.parse(arr);
-        } catch {
-          arr = [];
-        }
-      } else {
-        arr = arr.split(/[,|]/).map((l) => l.trim());
-      }
-    }
-    if (!Array.isArray(arr)) continue;
-    for (const label of arr) {
+    for (const label of row.nutrition_labels ?? []) {
       const key = String(label).toUpperCase().trim();
       if (key) labels[key] = (labels[key] || 0) + 1;
     }
@@ -338,14 +302,7 @@ export default async ({ req, res, log, error }) => {
   const db = new Databases(client);
 
   try {
-    log(`ENDPOINT: ${process.env.APPWRITE_FUNCTION_API_ENDPOINT}`);
-    log(`PROJECT_ID: ${process.env.APPWRITE_FUNCTION_PROJECT_ID}`);
-    log(`API_KEY set: ${!!process.env.APPWRITE_FUNCTION_API_KEY}`);
-    log("Loading question key map…");
-    const questionKeyMap = await loadQuestionKeyMap(db, log);
-    log(`Loaded ${questionKeyMap.size} question(s)`);
-
-    const projects = await listAll(db, PROJECTS_COL, [], log);
+    const projects = await listAll(db, PROJECTS_COL, [Query.select(["$id", "name"])], log);
     log(`Found ${projects.length} project(s)`);
 
     for (const project of projects) {
@@ -363,12 +320,7 @@ export default async ({ req, res, log, error }) => {
           log(`  Visits: ${visits.length}`);
 
           const visitIds = visits.map((v) => v.$id);
-          const questionData = await aggregatePhase(
-            db,
-            visitIds,
-            questionKeyMap,
-            log,
-          );
+          const questionData = await aggregatePhase(db, visitIds, log);
           const nutritionData = await aggregateNutrition(
             db,
             project.$id,
