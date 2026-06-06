@@ -136,7 +136,7 @@ async function listAll(db, collectionId, queries) {
 }
 
 /** Build a Map<questionId, questionKey> from the questions collection. */
-async function loadQuestionKeyMap(db) {
+async function loadQuestionKeyMap(db, log) {
   log("list all from questions collection…");
   const questions = await listAll(db, QUESTIONS_COL, []);
   const map = new Map();
@@ -344,7 +344,7 @@ export default async ({ req, res, log, error }) => {
 
   try {
     log("Loading question key map…");
-    const questionKeyMap = await loadQuestionKeyMap(db);
+    const questionKeyMap = await loadQuestionKeyMap(db, log);
     log(`Loaded ${questionKeyMap.size} question(s)`);
 
     const projects = await listAll(db, PROJECTS_COL, []);
