@@ -36,7 +36,7 @@ const PROJECTS_COL = process.env.PROJECTS_COL_ID || "projects";
 const QUESTIONS_COL = process.env.QUESTIONS_COL_ID || "questions";
 
 const PHASES = ["baseline", "endline"];
-const PAGE = 1000; // server-side SDK supports up to 5000, 1000 is safe
+const PAGE = 100;
 
 // ── Text utilities ────────────────────────────────────────────────────────────
 
@@ -121,18 +121,16 @@ function annualWorkdayBand(months, days) {
 
 async function listAll(db, collectionId, queries, log) {
   const docs = [];
-  let offset = 0;
+  let cursor = null;
   while (true) {
-    const res = await db.listDocuments(DB_ID, collectionId, [
-      ...queries,
-      Query.limit(PAGE),
-      Query.offset(offset),
-    ]);
+    const pageQueries = [...queries, Query.limit(PAGE)];
+    if (cursor) pageQueries.push(Query.cursorAfter(cursor));
+    const res = await db.listDocuments(DB_ID, collectionId, pageQueries);
     docs.push(...res.documents);
-    if (log && offset === 0 && res.total !== undefined)
+    if (log && !cursor && res.total !== undefined)
       log(`    listAll(${collectionId}): total=${res.total}`);
     if (res.documents.length < PAGE) break;
-    offset += PAGE;
+    cursor = res.documents[res.documents.length - 1].$id;
   }
   return docs;
 }
