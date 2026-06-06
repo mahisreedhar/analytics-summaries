@@ -140,7 +140,7 @@ async function loadQuestionKeyMap(db, log) {
   log(`  QUESTIONS_COL resolved to: "${QUESTIONS_COL}"`);
   log(`  DB_ID resolved to: "${DB_ID}"`);
   log("  Fetching questions from Appwrite…");
-  const questions = await listAll(db, QUESTIONS_COL, [], log);
+  const questions = await listAll(db, QUESTIONS_COL, [Query.select(["$id", "question_key"])], log);
   log(`  Fetched ${questions.length} question document(s)`);
   const map = new Map();
   questions.forEach((q) => {
@@ -197,6 +197,7 @@ async function aggregatePhase(db, visitIds, questionKeyMap, log) {
     const batch = visitIds.slice(i, i + BATCH);
     const answers = await listAll(db, ANSWERS_COL, [
       Query.equal("visit", batch),
+      Query.select(["$id", "question", "visit", "answer_number", "answer_decimal", "answer_text", "answer_date"]),
     ], log);
 
     for (const answer of answers) {
@@ -366,6 +367,7 @@ export default async ({ req, res, log, error }) => {
           const visits = await listAll(db, VISITS_COL, [
             Query.equal("project", project.$id),
             Query.equal("phase", phase),
+            Query.select(["$id"]),
           ], log);
           log(`  Visits: ${visits.length}`);
 
