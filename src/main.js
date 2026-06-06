@@ -30,7 +30,7 @@ const VISITS_COL = process.env.VISITS_COL_ID || "visits";
 const ANSWERS_COL = process.env.VISIT_ANSWERS_COL_ID || "visit_answers";
 const ANALYTICS_COL = process.env.ANALYTICS_COL_ID || "analytics";
 const SUMMARIES_COL =
-  process.env.ANALYTICS_SUMMARIES_COL_ID || "analytics_summaries";
+  process.env.ANALYTICS_SUMMARIES_COL_ID || "analytics_summary";
 const PROJECTS_COL = process.env.PROJECTS_COL_ID || "projects";
 
 const PHASES = ["baseline", "endline"];
@@ -163,9 +163,12 @@ async function aggregatePhase(db, visitIds, log) {
   const BATCH = 25; // Appwrite Query.equal array limit is 100; stay well under it
   for (let i = 0; i < visitIds.length; i += BATCH) {
     const batch = visitIds.slice(i, i + BATCH);
-    const answers = await listAll(db, ANSWERS_COL, [
-      Query.equal("visit", batch),
-    ], log);
+    const answers = await listAll(
+      db,
+      ANSWERS_COL,
+      [Query.equal("visit", batch)],
+      log,
+    );
 
     for (const answer of answers) {
       const qKey = resolveQuestionKey(answer);
@@ -235,11 +238,16 @@ async function aggregatePhase(db, visitIds, log) {
  * Returns { _total: N, labels: { [LABEL]: count } }
  */
 async function aggregateNutrition(db, projectId, phase, log) {
-  const rows = await listAll(db, ANALYTICS_COL, [
-    Query.equal("project", projectId),
-    Query.equal("phase", phase),
-    Query.select(["$id", "nutrition_labels"]),
-  ], log);
+  const rows = await listAll(
+    db,
+    ANALYTICS_COL,
+    [
+      Query.equal("project", projectId),
+      Query.equal("phase", phase),
+      Query.select(["$id", "nutrition_labels"]),
+    ],
+    log,
+  );
 
   const labels = {};
   for (const row of rows) {
@@ -301,7 +309,12 @@ export default async ({ req, res, log, error }) => {
   const db = new Databases(client);
 
   try {
-    const projects = await listAll(db, PROJECTS_COL, [Query.select(["$id", "name"])], log);
+    const projects = await listAll(
+      db,
+      PROJECTS_COL,
+      [Query.select(["$id", "name"])],
+      log,
+    );
     log(`Found ${projects.length} project(s)`);
 
     for (const project of projects) {
@@ -311,11 +324,16 @@ export default async ({ req, res, log, error }) => {
         for (const phase of PHASES) {
           log(`  Phase: ${phase}`);
 
-          const visits = await listAll(db, VISITS_COL, [
-            Query.equal("project", project.$id),
-            Query.equal("phase", phase),
-            Query.select(["$id"]),
-          ], log);
+          const visits = await listAll(
+            db,
+            VISITS_COL,
+            [
+              Query.equal("project", project.$id),
+              Query.equal("phase", phase),
+              Query.select(["$id"]),
+            ],
+            log,
+          );
           log(`  Visits: ${visits.length}`);
 
           const visitIds = visits.map((v) => v.$id);
