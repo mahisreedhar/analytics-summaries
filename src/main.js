@@ -34,7 +34,7 @@ const SUMMARIES_COL =
 const PROJECTS_COL = process.env.PROJECTS_COL_ID || "projects";
 
 const PHASES = ["baseline", "endline"];
-const PAGE = 100;
+const PAGE = 500;
 
 // ── Text utilities ────────────────────────────────────────────────────────────
 
