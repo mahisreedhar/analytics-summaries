@@ -137,17 +137,8 @@ async function listAll(db, collectionId, queries, log) {
 
 /** Build a Map<questionId, questionKey> from the questions collection. */
 async function loadQuestionKeyMap(db, log) {
-  log(`  QUESTIONS_COL resolved to: "${QUESTIONS_COL}"`);
-  log(`  DB_ID resolved to: "${DB_ID}"`);
-  log("  Fetching questions from Appwrite…");
-  const questions = await listAll(db, QUESTIONS_COL, [Query.select(["$id", "question_key"])], log);
-  log(`  Fetched ${questions.length} question document(s)`);
-  const map = new Map();
-  questions.forEach((q) => {
-    if (q.$id && q.question_key) map.set(q.$id, q.question_key);
-  });
-  log(`  Mapped ${map.size} question key(s)`);
-  return map;
+  log("  Skipping questions fetch — question_key resolved from embedded relationship on answers");
+  return new Map();
 }
 
 // ── Core aggregation ──────────────────────────────────────────────────────────
