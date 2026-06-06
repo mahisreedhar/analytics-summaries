@@ -119,7 +119,7 @@ function annualWorkdayBand(months, days) {
 
 // ── Appwrite fetch helpers ────────────────────────────────────────────────────
 
-async function listAll(db, collectionId, queries) {
+async function listAll(db, collectionId, queries, log) {
   const docs = [];
   let offset = 0;
   while (true) {
@@ -129,6 +129,8 @@ async function listAll(db, collectionId, queries) {
       Query.offset(offset),
     ]);
     docs.push(...res.documents);
+    if (log && offset === 0 && res.total !== undefined)
+      log(`    listAll(${collectionId}): total=${res.total}`);
     if (res.documents.length < PAGE) break;
     offset += PAGE;
   }
@@ -140,7 +142,7 @@ async function loadQuestionKeyMap(db, log) {
   log(`  QUESTIONS_COL resolved to: "${QUESTIONS_COL}"`);
   log(`  DB_ID resolved to: "${DB_ID}"`);
   log("  Fetching questions from Appwrite…");
-  const questions = await listAll(db, QUESTIONS_COL, []);
+  const questions = await listAll(db, QUESTIONS_COL, [], log);
   log(`  Fetched ${questions.length} question document(s)`);
   const map = new Map();
   questions.forEach((q) => {
@@ -192,12 +194,12 @@ async function aggregatePhase(db, visitIds, questionKeyMap, log) {
   const q12ByVisit = {};
   const q13ByVisit = {};
 
-  const BATCH = 100; // batch visit IDs per query
+  const BATCH = 25; // Appwrite Query.equal array limit is 100; stay well under it
   for (let i = 0; i < visitIds.length; i += BATCH) {
     const batch = visitIds.slice(i, i + BATCH);
     const answers = await listAll(db, ANSWERS_COL, [
       Query.equal("visit", batch),
-    ]);
+    ], log);
 
     for (const answer of answers) {
       const qKey = resolveQuestionKey(answer, questionKeyMap);
@@ -266,11 +268,11 @@ async function aggregatePhase(db, visitIds, questionKeyMap, log) {
  * Count nutrition labels from the analytics collection for one project+phase.
  * Returns { _total: N, labels: { [LABEL]: count } }
  */
-async function aggregateNutrition(db, projectId, phase) {
+async function aggregateNutrition(db, projectId, phase, log) {
   const rows = await listAll(db, ANALYTICS_COL, [
     Query.equal("project", projectId),
     Query.equal("phase", phase),
-  ]);
+  ], log);
 
   const labels = {};
   for (const row of rows) {
@@ -350,7 +352,7 @@ export default async ({ req, res, log, error }) => {
     const questionKeyMap = await loadQuestionKeyMap(db, log);
     log(`Loaded ${questionKeyMap.size} question(s)`);
 
-    const projects = await listAll(db, PROJECTS_COL, []);
+    const projects = await listAll(db, PROJECTS_COL, [], log);
     log(`Found ${projects.length} project(s)`);
 
     for (const project of projects) {
@@ -363,7 +365,7 @@ export default async ({ req, res, log, error }) => {
           const visits = await listAll(db, VISITS_COL, [
             Query.equal("project", project.$id),
             Query.equal("phase", phase),
-          ]);
+          ], log);
           log(`  Visits: ${visits.length}`);
 
           const visitIds = visits.map((v) => v.$id);
@@ -377,6 +379,7 @@ export default async ({ req, res, log, error }) => {
             db,
             project.$id,
             phase,
+            log,
           );
 
           await upsertSummary(
