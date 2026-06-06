@@ -137,11 +137,13 @@ async function listAll(db, collectionId, queries) {
 
 /** Build a Map<questionId, questionKey> from the questions collection. */
 async function loadQuestionKeyMap(db) {
+  log("list all from questions collection…");
   const questions = await listAll(db, QUESTIONS_COL, []);
   const map = new Map();
   questions.forEach((q) => {
     if (q.$id && q.question_key) map.set(q.$id, q.question_key);
   });
+  log("question key map returning…");
   return map;
 }
 
